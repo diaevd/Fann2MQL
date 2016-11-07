@@ -24,8 +24,11 @@
 
 #import "Fann2MQL.dll"
 
+#define F2M_MAX_THREADS 64
+
 /* Creation/Execution */
 int f2M_create_standard(int num_layers, int l1num, int l2num, int l3num, int l4num);
+int f2M_create_standard_array(int num_layers, unsigned int &layers[]);
 int f2M_destroy(int ann);
 int f2M_destroy_all_anns();
 int f2M_run(int ann, double& input_vector[]);
@@ -34,18 +37,19 @@ int f2M_randomize_weights(int ann, double min_weight, double max_weight);
 /* Creation/Execution Parameters */
 int f2M_get_num_input(int ann);
 int f2M_get_num_output(int ann);
+int f2M_get_total_neurons(int ann);
+int f2M_get_num_layers(int ann);
 
 /* Training */
 int f2M_train(int ann, double& input_vector[], double& output_vector[]);
 int f2M_train_fast(int ann, double& input_vector[], double& output_vector[]);
 int f2M_test(int ann, double& input_vector[], double& output_vector[]);
 double f2M_get_MSE(int ann);
-int f2M_get_total_neurons(int ann);
 int f2M_get_bit_fail(int ann);
 int f2M_reset_MSE(int ann);
 /* Training Parameters */
-int f2m_get_training_algorithm(int ann);
-int f2m_set_training_algorithm(int ann, int training_algorithm);
+int f2M_get_training_algorithm(int ann);
+int f2M_set_training_algorithm(int ann, int training_algorithm);
 int f2M_set_act_function_layer(int ann, int activation_function, int layer);
 int f2M_set_act_function_hidden(int ann, int activation_function);
 int f2M_set_act_function_output(int ann, int activation_function);
@@ -91,30 +95,133 @@ int f2M_save(int ann, string path)
 	return f2M_save(ann, p);
 }
 
-#define F2M_MAX_THREADS 64
+enum fann_activationfunc_enum
+{
+	FANN_LINEAR = 0,
+	FANN_THRESHOLD,
+	FANN_THRESHOLD_SYMMETRIC,
+	FANN_SIGMOID,
+	FANN_SIGMOID_STEPWISE,
+	FANN_SIGMOID_SYMMETRIC,
+	FANN_SIGMOID_SYMMETRIC_STEPWISE,
+	FANN_GAUSSIAN,
+	FANN_GAUSSIAN_SYMMETRIC,
+	// Stepwise linear approximation to gaussian.
+	// Faster than gaussian but a bit less precise.
+	// NOT implemented yet.
+	FANN_GAUSSIAN_STEPWISE,
+	FANN_ELLIOT,
+	FANN_ELLIOT_SYMMETRIC,
+	FANN_LINEAR_PIECE,
+	FANN_LINEAR_PIECE_SYMMETRIC,
+	FANN_SIN_SYMMETRIC,
+	FANN_COS_SYMMETRIC,
+	FANN_SIN,
+	FANN_COS
+};
+
+static string FANN_ACTIVATIONFUNC_NAMES[] = {
+	"FANN_LINEAR",
+	"FANN_THRESHOLD",
+	"FANN_THRESHOLD_SYMMETRIC",
+	"FANN_SIGMOID",
+	"FANN_SIGMOID_STEPWISE",
+	"FANN_SIGMOID_SYMMETRIC",
+	"FANN_SIGMOID_SYMMETRIC_STEPWISE",
+	"FANN_GAUSSIAN",
+	"FANN_GAUSSIAN_SYMMETRIC",
+	"FANN_GAUSSIAN_STEPWISE",
+	"FANN_ELLIOT",
+	"FANN_ELLIOT_SYMMETRIC",
+	"FANN_LINEAR_PIECE",
+	"FANN_LINEAR_PIECE_SYMMETRIC",
+	"FANN_SIN_SYMMETRIC",
+	"FANN_COS_SYMMETRIC",
+	"FANN_SIN",
+	"FANN_COS"
+};
+
+enum fann_train_enum
+{
+	FANN_TRAIN_INCREMENTAL = 0,
+	FANN_TRAIN_BATCH,
+	FANN_TRAIN_RPROP,
+	FANN_TRAIN_QUICKPROP,
+	FANN_TRAIN_SARPROP
+};
+
+static string FANN_TRAIN_NAMES[] = {
+	"FANN_TRAIN_INCREMENTAL",
+	"FANN_TRAIN_BATCH",
+	"FANN_TRAIN_RPROP",
+	"FANN_TRAIN_QUICKPROP",
+	"FANN_TRAIN_SARPROP"
+};
+
+enum fann_errorfunc_enum
+{
+        FANN_ERRORFUNC_LINEAR = 0,
+	FANN_ERRORFUNC_TANH
+};
+
+static string FANN_ERRORFUNC_NAMES[] = {
+        "FANN_ERRORFUNC_LINEAR",
+	"FANN_ERRORFUNC_TANH"
+};
+
+enum fann_stopfunc_enum
+{
+        FANN_STOPFUNC_MSE = 0,
+	FANN_STOPFUNC_BIT
+};
+
+static string FANN_STOPFUNC_NAMES[] = {
+        "FANN_STOPFUNC_MSE",
+	"FANN_STOPFUNC_BIT"
+};
+
+enum fann_nettype_enum
+{
+	FANN_NETTYPE_LAYER = 0, /* Each layer only has connections to the next layer */
+        FANN_NETTYPE_SHORTCUT /* Each layer has connections to all following layers */
+};
+
+static string FANN_NETTYPE_NAMES[] = {
+        "FANN_NETTYPE_LAYER",
+	"FANN_NETTYPE_SHORTCUT"
+};
 
 #define FANN_DOUBLE_ERROR -1000000000
 
-#define FANN_LINEAR 0
-#define FANN_THRESHOLD 1
-#define FANN_THRESHOLD_SYMMETRIC 2
-#define FANN_SIGMOID 3
-#define FANN_SIGMOID_STEPWISE 4
-#define FANN_SIGMOID_SYMMETRIC 5
-#define FANN_SIGMOID_SYMMETRIC_STEPWISE 6
-#define FANN_GAUSSIAN 7
-#define FANN_GAUSSIAN_SYMMETRIC 8
-#define FANN_GAUSSIAN_STEPWISE 9
-#define FANN_ELLIOT 10
-#define FANN_ELLIOT_SYMMETRIC 11
-#define FANN_LINEAR_PIECE 12
-#define FANN_LINEAR_PIECE_SYMMETRIC 13
-#define FANN_SIN_SYMMETRIC 14
-#define FANN_COS_SYMMETRIC 15
-#define FANN_SIN 16
-#define FANN_COS 17
+enum fann_errno_enum
+{
+        FANN_E_NO_ERROR = 0,
+	FANN_E_CANT_OPEN_CONFIG_R,
+	FANN_E_CANT_OPEN_CONFIG_W,
+	FANN_E_WRONG_CONFIG_VERSION,
+	FANN_E_CANT_READ_CONFIG,
+	FANN_E_CANT_READ_NEURON,
+	FANN_E_CANT_READ_CONNECTIONS,
+	FANN_E_WRONG_NUM_CONNECTIONS,
+	FANN_E_CANT_OPEN_TD_W,
+	FANN_E_CANT_OPEN_TD_R,
+	FANN_E_CANT_READ_TD,
+	FANN_E_CANT_ALLOCATE_MEM,
+	FANN_E_CANT_TRAIN_ACTIVATION,
+	FANN_E_CANT_USE_ACTIVATION,
+	FANN_E_TRAIN_DATA_MISMATCH,
+	FANN_E_CANT_USE_TRAIN_ALG,
+	FANN_E_TRAIN_DATA_SUBSET,
+	FANN_E_INDEX_OUT_OF_BOUND,
+	FANN_E_SCALE_NOT_PRESENT,
+	FANN_E_INPUT_NO_MATCH,
+	FANN_E_OUTPUT_NO_MATCH,
+	FANN_E_WRONG_PARAMETERS_FOR_CREATE
+};
 
-#define FANN_TRAIN_INCREMENTAL 0
-#define FANN_TRAIN_BATCH 1
-#define FANN_TRAIN_RPROP 2
-#define FANN_TRAIN_QUICKPROP 3
+struct fann_error
+{
+        fann_errno_enum errno_f;
+	int error_log; // ErrLog FileHandle
+	string errstr; // uchar errstr[]
+};
