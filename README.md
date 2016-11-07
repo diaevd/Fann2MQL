@@ -1,6 +1,6 @@
 # Fann2MQL
 
-# About
+## About
 Fann2MQL is a Neural Network processing package for MetaTrader4.  It enables you to write your own Expert Adviser or Indicator taking advantage of Fast Artificial Neural Network Library. It’s very simple and efficient. You can use up to 1024 network simultaneously without recompiling it and in case you need more power it lets you perform parallel multithreaded processing on multiprocessor (or multicore) computer taking full advantage of Intel® Threading Building Blocks technology.
 
 This package is compatible with following operating systems:
